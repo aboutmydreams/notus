@@ -82,13 +82,14 @@ class _NotusMarkdownEncoder extends Converter<Delta, String> {
 
     while (iterator.hasNext) {
       final op = iterator.next();
-      final lf = op.data.indexOf('\n');
+      final opText = op.data is String ? op.data as String : '';
+      final lf = opText.indexOf('\n');
       if (lf == -1) {
         _handleSpan(op.data, op.attributes);
       } else {
         var span = StringBuffer();
-        for (var i = 0; i < op.data.length; i++) {
-          if (op.data.codeUnitAt(i) == 0x0A) {
+        for (var i = 0; i < opText.length; i++) {
+          if (opText.codeUnitAt(i) == 0x0A) {
             if (span.isNotEmpty) {
               // Write the span if it's not empty.
               _handleSpan(span.toString(), op.attributes);
@@ -98,7 +99,7 @@ class _NotusMarkdownEncoder extends Converter<Delta, String> {
             _handleLine(op.attributes);
             span.clear();
           } else {
-            span.writeCharCode(op.data.codeUnitAt(i));
+            span.writeCharCode(opText.codeUnitAt(i));
           }
         }
         // Remaining span
@@ -157,7 +158,7 @@ class _NotusMarkdownEncoder extends Converter<Delta, String> {
   }
 
   void _writeAttribute(StringBuffer buffer, NotusAttribute attribute,
-      {bool close = false}) {
+      {bool close: false}) {
     if (attribute == NotusAttribute.bold) {
       _writeBoldTag(buffer);
     } else if (attribute == NotusAttribute.italic) {
@@ -168,8 +169,11 @@ class _NotusMarkdownEncoder extends Converter<Delta, String> {
       _writeHeadingTag(buffer, attribute as NotusAttribute<int>);
     } else if (attribute.key == NotusAttribute.block.key) {
       _writeBlockTag(buffer, attribute as NotusAttribute<String>, close: close);
+    } else if (attribute.key == NotusAttribute.embed.key) {
+      _writeImageTag(buffer, attribute as NotusAttribute<Map<String, dynamic>>,
+          close: close);
     } else {
-      throw ArgumentError('Cannot handle $attribute');
+      throw new ArgumentError('Cannot handle $attribute');
     }
   }
 
@@ -208,6 +212,18 @@ class _NotusMarkdownEncoder extends Converter<Delta, String> {
 
       final tag = kSimpleBlocks[block];
       buffer.write(tag);
+    }
+  }
+
+  void _writeImageTag(
+      StringBuffer buffer, NotusAttribute<Map<String, dynamic>> string,
+      {bool close: false}) {
+    print('handling <<<<');
+    print(string.value['source']);
+    if (close) {
+      buffer.write('](' + string.value['source'] + ')');
+    } else {
+      buffer.write('![Image');
     }
   }
 }
